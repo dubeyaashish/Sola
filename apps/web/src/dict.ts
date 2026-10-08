@@ -6,8 +6,8 @@ export const DICT = {
   'login.tagline': ['Buy, sell and exchange gold with confidence — stock, pawn, savings and tax documents in one place.', 'ซื้อ ขาย เปลี่ยนทองได้มั่นใจ จัดการสต็อก ขายฝาก ออมทอง และเอกสารภาษีในที่เดียว'],
   'auth.logout': ['Sign out', 'ออกจากระบบ'],
   // nav
-  'nav.dashboard': ['Dashboard', 'ภาพรวม'], 'nav.pos': ['Buy · Sell · Exchange', 'ซื้อ-ขาย-เปลี่ยน'], 'nav.transactions': ['Bills', 'รายการบิล'], 'nav.stock': ['Stock', 'สต็อกทอง'],
-  'nav.customers': ['Customers', 'ลูกค้า'], 'nav.pawn': ['Pawn · Sell-back', 'ขายฝาก/จำนำ'], 'nav.savings': ['Gold savings', 'ออมทอง'], 'nav.rates': ['Gold prices', 'ราคาทอง'],
+  'nav.dashboard': ['Dashboard', 'ภาพรวม'], 'nav.pos': ['Buy, sell, exchange', 'ซื้อ-ขาย-เปลี่ยน'], 'nav.transactions': ['Bills', 'รายการบิล'], 'nav.stock': ['Stock', 'สต็อกทอง'],
+  'nav.customers': ['Customers', 'ลูกค้า'], 'nav.pawn': ['Pawn and sell-back', 'ขายฝาก/จำนำ'], 'nav.savings': ['Gold savings', 'ออมทอง'], 'nav.rates': ['Gold prices', 'ราคาทอง'],
   'nav.reports': ['Reports', 'รายงาน'], 'nav.settings': ['Settings', 'ตั้งค่า'], 'nav.more': ['More', 'เพิ่มเติม'],
   // roles
   'role.OWNER': ['Owner', 'เจ้าของร้าน'], 'role.MANAGER': ['Manager', 'ผู้จัดการ'], 'role.CASHIER': ['Cashier', 'แคชเชียร์'], 'role.STOCK_CLERK': ['Stock clerk', 'พนักงานสต็อก'],
@@ -25,7 +25,7 @@ export const DICT = {
   'dash.pawnActive': ['Active pawn / sell-back', 'ขายฝาก/จำนำคงเหลือ'], 'dash.contracts': ['contracts', 'สัญญา'], 'dash.overdue': ['overdue', 'เกินกำหนด'],
   'dash.savingsLiab': ['Savings owed to customers', 'เงินออมทองค้างจ่าย'], 'dash.etax': ['Awaiting e-Tax', 'รอส่ง e-Tax'], 'dash.points': ['Points outstanding', 'แต้มคงค้าง'], 'dash.stockByPurity': ['Stock by purity', 'สต็อกตามความบริสุทธิ์'],
   // POS
-  'pos.title': ['Buy · Sell · Exchange', 'ซื้อ · ขาย · เปลี่ยนทอง'], 'pos.kind.sale': ['Sale', 'ขาย'], 'pos.kind.exchange': ['Exchange', 'เปลี่ยนทอง'], 'pos.kind.buy': ['Buying gold', 'รับซื้อทอง'],
+  'pos.title': ['Buy, sell, exchange', 'ซื้อ · ขาย · เปลี่ยนทอง'], 'pos.kind.sale': ['Sale', 'ขาย'], 'pos.kind.exchange': ['Exchange', 'เปลี่ยนทอง'], 'pos.kind.buy': ['Buying gold', 'รับซื้อทอง'],
   'pos.items': ['Items in stock', 'สินค้าในสต็อก'], 'pos.scan': ['Scan or type SKU / name', 'สแกนหรือพิมพ์รหัส/ชื่อ'], 'pos.customerGold': ["Customer's gold (buy / trade-in)", 'ทองของลูกค้า (รับซื้อ/เปลี่ยน)'],
   'pos.deduction': ['Deduction %', 'หักค่าเสื่อม %'], 'pos.isBar': ['Gold bar', 'ทองคำแท่ง'], 'pos.addGold': ['Add gold', 'เพิ่มทองเก่า'], 'pos.bar': ['bar', 'แท่ง'],
   'pos.bill': ['Bill', 'บิล'], 'pos.emptyBill': ['Add items or customer gold to start a bill', 'เพิ่มสินค้าหรือทองของลูกค้าเพื่อเริ่มบิล'], 'pos.oldGold': ['Old gold', 'ทองเก่า'],
@@ -92,6 +92,28 @@ export const DICT = {
   'settings.action': ['Action', 'การกระทำ'], 'settings.entity': ['Record', 'รายการ'],
   // printing
   'print.title': ['Print', 'พิมพ์'], 'print.print': ['Print', 'พิมพ์'], 'print.download': ['Download HTML', 'ดาวน์โหลด HTML'], 'print.language': ['Document language', 'ภาษาเอกสาร'], 'print.paper': ['Paper', 'ขนาดกระดาษ'], 'print.slip': ['80 mm slip', 'สลิป 80 มม.'],
+  // shell, panels, unsaved changes
+  'common.back': ['Back', 'กลับ'], 'common.clear': ['Clear', 'ล้าง'], 'common.close': ['Close', 'ปิด'], 'common.confirm': ['Confirm', 'ยืนยัน'], 'common.discard': ['Discard', 'ละทิ้งการแก้ไข'],
+  'common.discardLeave': ['Discard and leave', 'ละทิ้งและออก'], 'common.more': ['More actions', 'เมนูเพิ่มเติม'], 'common.saveChanges': ['Save changes', 'บันทึกการเปลี่ยนแปลง'], 'common.saving': ['Saving…', 'กำลังบันทึก…'],
+  'common.togglePanel': ['Show or hide the details panel', 'แสดงหรือซ่อนแผงรายละเอียด'], 'common.unsaved': ['You have unsaved changes', 'มีการแก้ไขที่ยังไม่ได้บันทึก'], 'common.unsavedTitle': ['Unsaved changes', 'มีการแก้ไขที่ยังไม่ได้บันทึก'],
+  'common.unsavedMsg': ['Leave this page? Your unsaved changes will be lost.', 'ออกจากหน้านี้หรือไม่ การแก้ไขที่ยังไม่ได้บันทึกจะหายไป'], 'common.you': ['You', 'คุณ'],
+  'navs.dash': ['Overview', 'ภาพรวม'], 'navs.pos': ['Counter', 'ซื้อ-ขาย'], 'navs.tx': ['Bills', 'บิล'], 'navs.stock': ['Stock', 'สต็อก'], 'navs.cust': ['Customers', 'ลูกค้า'], 'navs.pawn': ['Pawn', 'ขายฝาก'],
+  'navs.sav': ['Savings', 'ออมทอง'], 'navs.rates': ['Prices', 'ราคาทอง'], 'navs.rep': ['Reports', 'รายงาน'], 'navs.set': ['Settings', 'ตั้งค่า'],
+  'rate.stale': ['Price is more than 12 hours old', 'ราคาเก่ากว่า 12 ชั่วโมง'],
+  'cust.overview': ['Overview', 'ข้อมูลทั่วไป'], 'cust.pick': ['Select a customer to see details', 'เลือกลูกค้าเพื่อดูรายละเอียด'],
+  'tx.items': ['Items', 'รายการสินค้า'], 'tx.payments': ['Payments', 'การชำระเงิน'], 'tx.pick': ['Select a bill to see details', 'เลือกบิลเพื่อดูรายละเอียด'], 'tx.search': ['Search bill number or customer', 'ค้นหาเลขบิลหรือชื่อลูกค้า'],
+  'tx.range.today': ['Today', 'วันนี้'], 'tx.range.7d': ['Last 7 days', '7 วันล่าสุด'], 'tx.range.30d': ['Last 30 days', '30 วันล่าสุด'],
+  'stock.details': ['Details', 'รายละเอียด'], 'stock.search': ['Search name or SKU', 'ค้นหาชื่อหรือรหัสสินค้า'],
+  'pos.reviewBill': ['Review bill', 'ตรวจสอบบิล'], 'pos.summary': ['Summary', 'สรุปยอด'], 'print.fit': ['Fit width', 'พอดีความกว้าง'], 'rep.summary': ['Summary', 'สรุป'],
+  'pawn.calc': ['Interest calculator', 'คำนวณดอกเบี้ย'], 'pawn.days': ['days', 'วัน'], 'pawn.items': ['Pledged items', 'ทรัพย์ที่รับ'], 'pawn.paidTo': ['Interest paid to', 'ชำระดอกเบี้ยถึง'], 'pawn.pick': ['Select a contract to see details', 'เลือกสัญญาเพื่อดูรายละเอียด'],
+  'pawn.renewTo': ['Renewing extends the due date to', 'ต่อดอกแล้วจะครบกำหนดวันที่'], 'pawn.startDate': ['Start date', 'วันที่ทำสัญญา'], 'pawn.summary': ['Summary', 'สรุป'],
+  'sav.pick': ['Select an account to see details', 'เลือกบัญชีเพื่อดูรายละเอียด'], 'sav.startDate': ['Start date', 'วันที่เริ่มออม'],
+  'settings.groupShop': ['Shop', 'ร้านค้า'], 'settings.groupAccess': ['Access', 'การเข้าใช้งาน'], 'settings.useLogo': ['Use this logo', 'ใช้โลโก้นี้'],
+  'settings.addressHint': ['Choose province, district and sub-district. The postcode fills in automatically.', 'เลือกจังหวัด อำเภอ ตำบล ระบบจะใส่รหัสไปรษณีย์ให้อัตโนมัติ'],
+  'settings.taxModeDesc': ['Which part of a bill VAT is charged on.', 'ส่วนของบิลที่คิด VAT'], 'settings.taxRateDesc': ['Applied to the amount chosen above.', 'คิดจากยอดตามที่เลือกด้านบน'],
+  'settings.pawnMaxDesc': ['Contracts above this rate are refused.', 'ระบบจะไม่รับสัญญาที่ดอกเบี้ยสูงกว่านี้'], 'settings.pawnTermDesc': ['Used when a contract does not set its own term.', 'ใช้เมื่อสัญญาไม่ได้ระบุระยะเวลา'],
+  'settings.pawnGraceDesc': ['Extra days after the due date before gold can be forfeited.', 'จำนวนวันผ่อนผันหลังครบกำหนดก่อนหลุดจำนำได้'], 'settings.pawnMinDaysDesc': ['Shortest period that is charged interest.', 'จำนวนวันขั้นต่ำที่คิดดอกเบี้ย'],
+  'settings.bahtPerPointDesc': ['Amount a customer spends to earn one point.', 'ยอดซื้อที่ลูกค้าต้องใช้เพื่อได้ 1 แต้ม'],
   // enums
   'st.IN_STOCK': ['In stock', 'ในสต็อก'], 'st.SOLD': ['Sold', 'ขายแล้ว'], 'st.RESERVED': ['Reserved', 'จอง'], 'st.MISSING': ['Missing', 'สูญหาย'], 'st.VOIDED': ['Voided', 'ยกเลิก'], 'st.COMPLETED': ['Completed', 'สำเร็จ'],
   'st.ACTIVE': ['Active', 'ใช้งานอยู่'], 'st.REDEEMED': ['Redeemed', 'ไถ่ถอนแล้ว'], 'st.FORFEITED': ['Forfeited', 'หลุดจำนำ'], 'st.CLOSED': ['Closed', 'ปิดแล้ว'], 'st.ISSUED': ['Issued', 'ออกแล้ว'],

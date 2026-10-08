@@ -1,97 +1,79 @@
 # Sola — UX & Visual Design
 
-Bilingual (English / ไทย), responsive, red · white · gold. Implemented in `apps/web` (tokens in `src/styles.css`, strings in `src/dict.ts`).
+Bilingual (English / ไทย), responsive, **red · white · gold**. Implemented in `apps/web` with React + Tailwind 3. Built from the "calm business tool" reference spec, with the spec's blue accent replaced by Sola red.
 
-## 1. Principles
+## 1. Character
 
-1. **One screen for the counter.** Selling, exchanging old gold and buying gold happen on the same screen; the cashier never navigates mid-bill.
-2. **The server prices, the screen shows.** Totals always come from `/pricing/quote`; the UI never recomputes money.
-3. **Few taps for the common case.** A cash sale for the exact amount is: tap item → tap *Confirm*. Payment rows auto-fill to the amount due.
-4. **Make mistakes recoverable and visible.** Voids need a reason and a role; destructive actions use a confirm dialog that says exactly what will be reversed.
-5. **Thai and English are equals.** Every string, enum, error code and printed document exists in both; the choice is remembered per device.
+Quiet and professional: white cards on a very light grey canvas, thin borders, 14 px type, one accent colour. No gradients, no heavy shadows.
 
-## 2. Information architecture
-
-| Area | Screen | Who (permission) |
-|---|---|---|
-| Overview | Dashboard — sales, stock value, pawn/overdue, savings owed, e-Tax queue | Owner, Manager (`report.view`) |
-| Counter | **Buy · Sell · Exchange** | Cashier+ (`sale.create`, `buyback.create`) |
-| | Bills — history, reprint, full tax invoice, void | Cashier (view), Manager (void) |
-| Inventory | Stock — by purity/source, receive, adjust, movement history | Stock clerk+ |
-| People | Customers — ID-card fields, points, rewards | Cashier+ |
-| Credit | Pawn · Sell-back — open, renew, pay principal, redeem, forfeit | Cashier+ (forfeit: Manager) |
-| | Gold savings — plans, deposits, printable ticket | Cashier+ |
-| Prices | Gold prices — current, update from announcement, history | Manager+ (`rate.set`) |
-| Back office | Reports — P&L, income/expense, e-Tax queue | Manager+ |
-| Admin | Settings — company, logo, tax & rules, users, audit log | Owner (audit: Manager) |
-
-Navigation is built from the user's permissions, so each role sees only what it can use.
-
-## 3. Key flows
-
-**Sale / exchange / buy.** Search or scan SKU → *Add* → (optional) enter customer's old gold: weight, purity, deduction → choose customer (required when buying gold) → review live totals → payment (split allowed, savings account usable) → *Confirm* → completion dialog offers *Print bill* and each tax document.
-
-**Pawn.** New contract (customer must have a national ID) → ticket prints automatically → later: pick date → interest and redeem total update live → Renew / Pay principal / Redeem; Forfeit (manager) moves the gold into stock as *Forfeited pawn*.
-
-**Savings.** Open (fixed installments or flexible; money or gold-weight) → deposit → printable ticket with next due date → redeem inside a sale as a payment method.
-
-**Company setup.** Settings → Company: names, tax ID, branch, phone, then address by **province → district → sub-district** dropdowns (7,436 sub-districts); the postcode fills automatically and a live preview shows exactly what prints. Logo: choose an image — large files are resized in the browser — preview, save.
-
-## 4. Layout and responsiveness
-
-| Breakpoint | Layout |
+| Role | Colour |
 |---|---|
-| ≥ 1100 px (desktop) | 248 px sidebar with labels, sticky top bar (date · live gold price · language), two-column work areas. |
-| 700–1099 px (tablet) | 76 px icon rail, single-column work areas, sticky *total + Pay* bar on the POS. |
-| < 700 px (phone) | No sidebar: bottom tab bar (4 primary screens + *More*), price strip under the header, tables become labelled cards, dialogs become bottom sheets, toasts sit above the tab bar, sticky *total + Pay* bar. |
+| **Primary / accent (the spec's "brand blue")** | Sola red — `brand-600 #b3202f` (buttons, active states, focus), `brand-700 #9b1b30` hover, `brand-50 #fdf3f4` selected fill, `brand-500` focus border, `brand-100` focus ring |
+| **Secondary accent** | Gold — `gold-500 #c9a227`, `gold-100/700` pills. Used sparingly: logo mark, gold-related pills (customer gold, savings ticket) |
+| **Neutrals (spec's "ink")** | 50 `#f6f7f9` page · 100 `#eceef2` dividers/hover · 200 `#d9dde4` control borders · 300 placeholder · 400 icons · 500 `#636d82` secondary text · 700 `#384154` body · 900 `#161b26` headings |
+| **Status** | Soft tint + darker text: emerald (ok), amber (warn), red (bad), gold, ink (neutral). Always with text, never colour alone |
 
-Touch targets are ≥ 42 px; form text is ≥ 15 px (no iOS zoom). Verified in a real browser at 1440, 820 and 390 px in both languages: no horizontal overflow on any screen.
+Tokens live in `apps/web/tailwind.config.js`; component classes (`.input .btn .btn-primary .btn-outline .btn-ghost .btn-danger .icon-btn .card .label .tab .tab-active .chip .chip-on .pill .row-item`) in `src/index.css`.
 
-## 5. Visual system
+**Type**: IBM Plex Sans Thai → IBM Plex Sans → system-ui, 14 px base, labels 12 px medium, page titles 18–20 px semibold, tabular numerals for money. **Shape**: radius 8 (controls) / 12 (cards, menus) / 16 (modals); card shadow `0 1px 2px / 0 1px 3px`; modal `shadow-2xl`; paper preview `0 2px 12px`.
 
-**Palette** (CSS custom properties on `:root`)
+## 2. Layout
 
-| Token | Hex | Use |
-|---|---|---|
-| `--red-600 / 700` | `#b3202f / #9b1b30` | Primary actions, active states, key totals |
-| `--red-800 / 900` | `#781323 / #5a0c17` | Sidebar, headings |
-| `--gold-500 / 400` | `#c9a227 / #dcbc52` | Accents, top-bar rule, secondary action, card top borders |
-| `--gold-700` | `#85650f` | Gold used as *text* on white |
-| `--gold-50 / 100` | `#fcf8e9 / #f7edc9` | Highlights, ticker, totals background |
-| `--bg` / white | `#fffaf3` / `#ffffff` | Warm-white page, white cards |
-| `--ink` / `--muted` | `#2b1a1c` / `#73635d` | Text |
+**Desktop (≥ 1024 px)**: icon rail (64 px: logo, icon + tiny label, avatar menu) → list pane (340–360 px) → main pane → optional right panel (≥ 1280 px, collapsible, remembered). A slim strip above the panes shows the live gold price (bar and ornament, buy / sell) and flags a price older than 12 hours.
 
-Rule of thumb: **red = do / money that matters, gold = decoration and secondary, white = space.** Gold is never used for body text on white (3.5:1); `--gold-700` is.
+| Screen | List pane | Main | Right panel |
+|---|---|---|---|
+| Counter | Items in stock (search/scan) | Bill, customer, customer's old gold | Summary and payment |
+| Bills | Search, date and type chips | Items · Payments · Tax documents | Totals, customer |
+| Stock | Search, status chips | Details · Movement history (summary when nothing selected) | — |
+| Customers | Avatar rows | Overview · Points · Bills | Points, rewards |
+| Pawn | Status chips, overdue pills | Summary · Items · History | Interest calculator |
+| Gold savings | Account rows | Ticket, history | Plan |
+| Dashboard, Gold prices, Reports | — | Full-width cards / tables | — |
+| Settings | Grouped menu | Row cards | — |
 
-**Measured contrast (WCAG)**: body text 16.0:1 · muted text 5.5:1 · white on primary red 6.6:1 · headings 11.0:1 · gold-700 on white 5.4:1 · sidebar text on red 8.2:1 · gold button label 4.9:1 · status badges ≥ 4.7:1.
+**Below 1024 px**: one pane at a time. The rail becomes a bottom tab bar (4 screens + *More*); list → detail drills in with a back arrow; the right panel stacks under the detail; secondary actions fold into the "⋯" menu while the primary stays visible; large dialogs go full-screen; inputs are 16 px to stop iOS zoom; the shell respects `env(safe-area-inset-*)`.
 
-**Type**: *Sarabun* (Latin + Thai in one family, so mixed lines align), fallbacks Noto Sans Thai → system. Numerals are tabular everywhere money appears. Scale: 15 body · 13 secondary · 16 card titles · 22 page titles · 24–30 key figures.
+## 3. Interaction rules (as implemented)
 
-**Components**: Card (gold or red top rule), Stat tile, Badge (ok / warn / bad / gold), Button (primary red, gold, outline, danger, ghost), Field, Modal / bottom sheet, Toast, Empty state, responsive Table, cascading address selects, logo uploader, Print dialog.
+1. One primary action per screen (red), top-right or bottom-right in dialogs.
+2. Every completed action shows a toast (one at a time, top centre; errors stay longer and are translated from server error codes). Buttons show their busy state.
+3. Save model: selects and toggles apply instantly; text rules save on blur; multi-field forms (company profile) show a **save bar only when dirty** with *Discard* and *Save changes*; leaving a dirty form asks first.
+4. Destructive actions use a confirm dialog with a red button and plain wording; voiding a bill requires a reason (Confirm stays disabled until filled).
+5. Empty, loading and error are designed states on every list and page.
+6. Search is live and debounced (250 ms); filters are chips; selected rows have a fill and a left bar; selected chips and tabs change colour *and* weight.
+7. Keyboard: Esc closes dialogs and menus, Enter submits, a visible focus ring everywhere, dialogs trap focus and restore it.
+8. View state is remembered per device (last screen, filters, panel state) in `localStorage`, guarded with try/catch.
+9. Motion is only a short colour transition on hover and focus; reduced-motion is respected.
+10. Copy: short, sentence case, verbs on buttons, no exclamation marks.
 
-**Feedback**: success and errors are toasts (errors stay longer). Server error codes map to translated messages (`err.*`). Disabled *Confirm* shows why (missing customer, amount mismatch) next to it.
+## 4. Key flows
 
-## 6. Language
+**Sell / exchange / buy**: pick items (tap to add or remove, or scan SKU + Enter) → optionally add the customer's old gold (weight, purity, deduction, bar or ornament) → choose a customer (required when buying gold) → totals update from the server → payment defaults to one exact cash payment, split payments and savings accounts supported → *Confirm bill* → print the bill or any tax document.
+**Pawn**: new contract (customer ID required) → ticket prints → pick any date to see interest and the redeem total → Redeem / Renew / pay part of principal; Forfeit (manager) moves the gold into stock.
+**Company setup**: Settings → Company: names, tax ID, branch, phone, then province → district → sub-district dropdowns (7,436 sub-districts); the postcode fills in and a preview shows exactly what prints. Logo: choose an image (resized in the browser), preview, *Use this logo*.
 
-`src/dict.ts` stores `[English, Thai]` pairs, so a string cannot exist in one language only; a test checks Thai text really is Thai, enum labels cover every value the API can return, and placeholders match. Dates follow the language (Thai shows the Buddhist-era year). Money is always `1,234.56`.
+## 5. Language
 
-## 7. Printed documents (HTML)
+All text goes through `t()` with a dictionary of `[English, Thai]` pairs (`src/dict.ts`), so a string cannot exist in one language only. Tests check Thai really is Thai, every enum value the API can return has a label, and placeholders match. The language switch is in the avatar menu (and the login screen, and *More* on phones). Dates follow the language (Thai uses the Buddhist-era year). Layouts tolerate longer text: no fixed-width buttons, truncation with ellipsis.
 
-Generated by the API (`apps/api/src/services/printing.ts`) as standalone HTML — no external files, safe to save, email or print.
+## 6. Printed documents (HTML)
+
+Generated by the API as standalone HTML; the app shows them on a grey desk with a white sheet, zoom (− % + / fit width), language (TH / EN / TH + EN), paper (A4 / 80 mm slip), Print and Download.
 
 | Document | Endpoint | Default paper |
 |---|---|---|
-| Bill / receipt | `GET /transactions/:id/receipt` | 80 mm slip |
+| Bill | `GET /transactions/:id/receipt` | 80 mm slip |
 | Abbreviated / full tax invoice, gold purchase voucher | `GET /documents/:id/html` | A4 |
 | Pawn / sell-back contract | `GET /pawn/:id/print` | A4 |
 | Savings ticket | `GET /savings/:id/print` | 80 mm slip |
 
-Query: `lang=th|en|both`, `format=a4|slip`, `autoprint=1`. Content: logo, company name, address, tax ID and branch from Settings; line items with weight/purity/gold/making; VAT; **amount in Thai words** (บาทถ้วน); payments; signature blocks (A4); a *CANCELLED* watermark on voided bills. All dynamic text is HTML-escaped and responses carry a restrictive Content-Security-Policy. Bills say they are *not* a tax invoice; the legal documents are the tax-invoice types.
+Content: logo, company name, address, tax ID and branch from Settings; line items; VAT; amount in Thai words; payments; signature blocks; a CANCELLED watermark on voided bills. All dynamic text is HTML-escaped and responses carry a restrictive Content-Security-Policy.
 
-## 8. Accessibility
+## 7. Accessibility
 
-Visible gold focus ring; dialogs close on Esc and restore context; form controls have labels; icon buttons have `aria-label`; language and paper toggles are groups with names; status is never colour-only (badges carry text); reduced-motion respected.
+Body text `ink-700` on white (≥ 8:1); secondary text `ink-500` (≈ 5.4:1); white on brand red ≈ 6.6:1. Icon-only buttons have `aria-label`; tabs and the language / paper groups have roles and names; status pills always carry text; touch targets ≥ 40 px on phones.
 
-## 9. Known gaps
+## 8. Known gaps
 
-ID-card reader hookup, e-Tax submission, automatic association price feed (API ready; needs a source), receipt printer driver profiles (browser print only), dark mode, offline mode.
+ID-card reader hookup, e-Tax submission, automatic association price feed, receipt-printer driver profiles (browser print only), dark mode, offline mode.

@@ -1,88 +1,112 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { get, post } from '../api';
 import { useI18n } from '../i18n';
+import { ChipRow, DetailBody, DetailHeader, KV, ListHeader, ListRow, MasterDetail, PanelTitle, RightPanel } from '../layout';
 import { PrintModal } from '../PrintModal';
-import { Badge, Card, ConfirmModal, Empty, Field, Icon, Modal, PageHead, baht, grams, pct, toneOf, today, useAction, useLabel } from '../ui';
+import { ConfirmDialog, Empty, Field, IconTile, Loading, Modal, SearchBox, StatusPill, baht, grams, pct, toneOf, useAction, useLabel, usePersisted } from '../ui';
+
+type TabId = 'items' | 'payments' | 'docs';
+const RANGES = ['today', '7d', '30d'] as const;
 
 export function Transactions({ user }: { user: any }) {
   const { t, date } = useI18n();
   const label = useLabel();
   const can = (p: string) => user.permissions.includes(p);
-  const [range, setRange] = useState({ from: today(), to: today() });
-  const [type, setType] = useState('');
-  const [list, setList] = useState<any[]>([]);
+  const [range, setRange] = usePersisted<string>('tx.range', 'today');
+  const [type, setType] = usePersisted<string>('tx.type', '');
+  const [q, setQ] = useState('');
+  const [list, setList] = useState<any[] | null>(null);
   const [sel, setSel] = useState<any>(null);
+  const [tab, setTab] = useState<TabId>('items');
   const [voiding, setVoiding] = useState(false);
-  const [reason, setReason] = useState('');
   const [invoice, setInvoice] = useState(false);
   const [buyer, setBuyer] = useState({ buyerName: '', buyerTaxId: '', buyerAddress: '', buyerBranch: '00000' });
   const [printing, setPrinting] = useState<{ path: string; title: string; fmt: 'a4' | 'slip' } | null>(null);
   const { run, busy } = useAction();
 
   const load = () => {
-    const to = new Date(Date.parse(`${range.to}T00:00:00Z`) + 86_400_000).toISOString();
-    get(`/transactions?from=${range.from}T00:00:00.000Z&to=${to}${type ? `&type=${type}` : ''}`).then(setList);
+    const days = range === 'today' ? 0 : range === '7d' ? 6 : 29;
+    const from = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+    const to = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+    get(`/transactions?from=${from}T00:00:00.000Z&to=${to}T00:00:00.000Z${type ? `&type=${type}` : ''}`).then(setList);
   };
   useEffect(load, [range, type]);
-  const open = (id: number) => get(`/transactions/${id}`).then(setSel);
+  const open = (id: number) => { setTab('items'); get(`/transactions/${id}`).then(setSel); };
+  const shown = useMemo(() => (list ?? []).filter((x) => !q || `${x.docNo} ${x.customerName ?? ''}`.toLowerCase().includes(q.toLowerCase())), [list, q]);
+
+  const listPane = (
+    <>
+      <ListHeader title={t('nav.transactions')}>
+        <SearchBox value={q} onChange={setQ} placeholder={t('tx.search')} />
+        <ChipRow value={range} onChange={setRange} chips={RANGES.map((r) => ({ id: r, label: t(`tx.range.${r}` as any) }))} />
+        <ChipRow value={type} onChange={setType} chips={[{ id: '', label: t('common.all') }, ...['SALE', 'TRADE_IN', 'BUYBACK'].map((x) => ({ id: x, label: label('type', x) }))]} />
+      </ListHeader>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {list === null ? <Loading /> : shown.length === 0 ? <Empty icon="receipt" title={t('common.empty')} /> : shown.map((x) => (
+          <ListRow key={x.id} selected={sel?.id === x.id} onClick={() => open(x.id)} lead={<IconTile icon="receipt" tone={x.status === 'VOIDED' ? 'neutral' : 'brand'} />}
+            title={x.docNo} sub={`${x.customerName ?? '—'} · ${date(x.createdAt, true)}`} meta={`${x.net < 0 ? '−' : ''}${baht(Math.abs(x.net))}`}
+            metaSub={x.status === 'VOIDED' ? <StatusPill tone="bad">{label('st', x.status)}</StatusPill> : label('type', x.type)} />))}
+      </div>
+    </>
+  );
+
+  const detail = sel && (
+    <>
+      <DetailHeader title={sel.docNo} pill={<StatusPill tone={toneOf(sel.status)}>{label('st', sel.status)}</StatusPill>} subtitle={`${date(sel.createdAt, true)} · ${sel.cashier}`}
+        primary={<button className="btn-primary" onClick={() => setPrinting({ path: `/transactions/${sel.id}/receipt`, title: sel.docNo, fmt: 'slip' })}>{t('pos.printBill')}</button>}
+        secondary={can('document.issue') && sel.status === 'COMPLETED' && sel.saleTotal > 0 ? [{ label: t('tx.fullInvoice'), icon: 'receipt', onClick: () => setInvoice(true) }] : []}
+        overflow={can('sale.void') && sel.status === 'COMPLETED' ? [{ label: t('tx.void'), icon: 'undo', danger: true, onClick: () => setVoiding(true) }] : []}
+        tabs={[{ id: 'items', label: t('tx.items'), count: sel.lines.length }, { id: 'payments', label: t('tx.payments'), count: sel.payments.length }, { id: 'docs', label: t('tx.documents'), count: sel.documents.length }]} tab={tab} onTab={setTab} />
+      <DetailBody>
+        {sel.status === 'VOIDED' && <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-700">{t('tx.voidedBecause')}: {sel.voidReason}</div>}
+        {tab === 'items' && (
+          <div className="card">{sel.lines.map((l: any) => (
+            <div key={l.id} className="flex items-center gap-3 border-b border-ink-100 px-4 py-3 last:border-0">
+              <IconTile icon={l.kind === 'TRADE_IN' ? 'undo' : 'box'} tone={l.kind === 'TRADE_IN' ? 'gold' : 'neutral'} />
+              <div className="min-w-0 flex-1"><div className="truncate font-medium text-ink-900">{l.description}</div><div className="text-xs text-ink-500">{grams(l.weightMg)} g · {pct(l.purityBp)}{l.kind === 'TRADE_IN' ? ` · ${t('pos.oldGold')}` : ''}</div></div>
+              <div className="tabular-nums text-ink-900">{l.kind === 'TRADE_IN' ? '−' : ''}{baht(l.lineTotal)}</div>
+            </div>))}</div>)}
+        {tab === 'payments' && (sel.payments.length === 0 ? <Empty icon="receipt" text={t('common.empty')} /> : (
+          <div className="card">{sel.payments.map((p: any) => <div key={p.id} className="flex justify-between border-b border-ink-100 px-4 py-3 last:border-0"><span>{label('mth', p.method)}{p.reference ? <span className="text-ink-500"> · {p.reference}</span> : null}</span><span className="tabular-nums">{p.amount < 0 ? '−' : ''}{baht(Math.abs(p.amount))}</span></div>)}</div>))}
+        {tab === 'docs' && (sel.documents.length === 0 ? <Empty icon="receipt" text={t('pos.noDocs')} /> : (
+          <div className="card">{sel.documents.map((d: any) => (
+            <div key={d.id} className="flex items-center gap-3 border-b border-ink-100 px-4 py-3 last:border-0">
+              <div className="min-w-0 flex-1"><div className="font-medium text-ink-900">{d.docNo}</div><div className="text-xs text-ink-500">{label('dt', d.docType)}</div></div>
+              <StatusPill tone={toneOf(d.status)}>{label('st', d.status)}</StatusPill>
+              <button className="btn-outline" onClick={() => setPrinting({ path: `/documents/${d.id}/html`, title: d.docNo, fmt: 'a4' })}>{t('print.print')}</button>
+            </div>))}</div>))}
+      </DetailBody>
+    </>
+  );
+
+  const right = sel && (
+    <RightPanel>
+      <div><PanelTitle>{t('pos.summary')}</PanelTitle>
+        <KV k={t('pos.gold')} v={baht(sel.goldTotal)} /><KV k={t('pos.making')} v={baht(sel.makingTotal + sel.otherTotal)} />
+        {sel.discount > 0 && <KV k={t('pos.discount')} v={`−${baht(sel.discount)}`} />}<KV k={t('pos.vat')} v={baht(sel.tax)} />
+        {sel.tradeInCredit > 0 && <KV k={t('pos.tradeInCredit')} v={`−${baht(sel.tradeInCredit)}`} />}
+        <KV k={sel.net >= 0 ? t('pos.customerPays') : t('pos.shopPays')} v={`฿${baht(Math.abs(sel.net))}`} strong /></div>
+      <div><PanelTitle>{t('common.customer')}</PanelTitle><div className="text-ink-900">{sel.customerName ?? '—'}</div>{sel.pointsEarned > 0 && <div className="text-xs text-ink-500">+{sel.pointsEarned} {t('common.pts')}</div>}</div>
+    </RightPanel>
+  );
 
   return (
     <>
-      <PageHead title={t('nav.transactions')} />
-      <Card>
-        <div className="row">
-          <Field label={t('common.from')}><input type="date" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} /></Field>
-          <Field label={t('common.to')}><input type="date" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} /></Field>
-          <Field label={t('common.type')}><select value={type} onChange={(e) => setType(e.target.value)}><option value="">{t('common.all')}</option>{['SALE', 'TRADE_IN', 'BUYBACK'].map((x) => <option key={x} value={x}>{label('type', x)}</option>)}</select></Field>
-        </div>
-      </Card>
-      <Card>
-        {list.length === 0 ? <Empty icon="receipt" text={t('common.empty')} /> : (
-          <div className="tbl-wrap"><table className="rtable"><thead><tr><th>{t('tx.docNo')}</th><th>{t('common.time')}</th><th>{t('common.type')}</th><th>{t('common.customer')}</th><th>{t('tx.cashier')}</th><th className="num">{t('tx.net')}</th><th>{t('common.status')}</th></tr></thead><tbody>
-            {list.map((x) => (
-              <tr key={x.id} className="click" onClick={() => open(x.id)}>
-                <td data-label={t('tx.docNo')}><b>{x.docNo}</b></td><td data-label={t('common.time')}>{date(x.createdAt, true)}</td><td data-label={t('common.type')}><Badge tone="gold">{label('type', x.type)}</Badge></td>
-                <td data-label={t('common.customer')}>{x.customerName ?? '—'}</td><td data-label={t('tx.cashier')}>{x.cashier}</td>
-                <td className="num" data-label={t('tx.net')}>{x.net < 0 ? '−' : ''}{baht(Math.abs(x.net))}</td><td data-label={t('common.status')}><Badge tone={toneOf(x.status)}>{label('st', x.status)}</Badge></td></tr>))}
-          </tbody></table></div>)}
-      </Card>
-
-      {sel && (
-        <Modal wide title={<>{sel.docNo} <Badge tone={toneOf(sel.status)}>{label('st', sel.status)}</Badge></>} onClose={() => setSel(null)}
-          foot={<>
-            <button className="btn" onClick={() => setPrinting({ path: `/transactions/${sel.id}/receipt`, title: sel.docNo, fmt: 'slip' })}><Icon name="print" /> {t('pos.printBill')}</button>
-            {can('document.issue') && sel.status === 'COMPLETED' && sel.saleTotal > 0 && <button className="btn gold" onClick={() => setInvoice(true)}>{t('tx.fullInvoice')}</button>}
-            {can('sale.void') && sel.status === 'COMPLETED' && <button className="btn danger" onClick={() => setVoiding(true)}><Icon name="undo" /> {t('tx.void')}</button>}
-          </>}>
-          <div className="muted small">{date(sel.createdAt, true)} · {sel.cashier} · {sel.customerName ?? '—'}</div>
-          {sel.status === 'VOIDED' && <div className="alert err">{t('tx.voidedBecause')}: {sel.voidReason}</div>}
-          <div className="tbl-wrap"><table><tbody>
-            {sel.lines.map((l: any) => <tr key={l.id}><td>{l.kind === 'TRADE_IN' && <Badge tone="warn">{t('pos.oldGold')}</Badge>} {l.description}<div className="muted small">{grams(l.weightMg)} g · {pct(l.purityBp)}</div></td><td className="num">{l.kind === 'TRADE_IN' ? '−' : ''}{baht(l.lineTotal)}</td></tr>)}
-          </tbody></table></div>
-          <div className="tot" style={{ marginTop: 8 }}>
-            <span>{t('pos.vat')}</span><span className="num">{baht(sel.tax)}</span>
-            <span className="grand">{sel.net >= 0 ? t('pos.customerPays') : t('pos.shopPays')}</span><span className="grand num">฿{baht(Math.abs(sel.net))}</span>
-          </div>
-          <h4 style={{ marginTop: 14 }}>{t('tx.documents')}</h4>
-          {sel.documents.length === 0 ? <div className="muted">{t('pos.noDocs')}</div> : sel.documents.map((d: any) => (
-            <div className="line" key={d.id}><span><b>{d.docNo}</b> <Badge tone={d.status === 'ISSUED' ? 'ok' : 'bad'}>{label('st', d.status)}</Badge><div className="muted small">{label('dt', d.docType)}</div></span>
-              <button className="btn sm" onClick={() => setPrinting({ path: `/documents/${d.id}/html`, title: d.docNo, fmt: 'a4' })}><Icon name="print" /> {t('print.print')}</button></div>))}
-        </Modal>)}
-
-      {voiding && sel && (
-        <Modal title={t('tx.void')} onClose={() => setVoiding(false)} foot={<><button className="btn" onClick={() => setVoiding(false)}>{t('common.cancel')}</button>
-          <button className="btn danger" disabled={busy || !reason.trim()} onClick={() => run(() => post(`/transactions/${sel.id}/void`, { reason }), t('tx.voided')).then((r) => { if (r) { setVoiding(false); setReason(''); setSel(null); load(); } })}>{t('tx.void')}</button></>}>
-          <p>{t('tx.voidWarn')}</p><Field label={t('tx.voidReason')}><input value={reason} onChange={(e) => setReason(e.target.value)} autoFocus /></Field>
-        </Modal>)}
-
+      <MasterDetail panelKey="tx" list={listPane} detail={detail ?? null} right={right} onBack={() => setSel(null)} empty={<Empty icon="receipt" text={t('tx.pick')} />} />
+      {voiding && sel && <ConfirmDialog destructive title={t('tx.void')} message={t('tx.voidWarn')} reasonLabel={t('tx.voidReason')} confirmLabel={t('tx.void')} onClose={() => setVoiding(false)}
+        onConfirm={(reason) => run(() => post(`/transactions/${sel.id}/void`, { reason }), t('tx.voided')).then((r) => { if (r) { setSel(null); load(); } })} />}
       {invoice && sel && (
-        <Modal title={t('tx.fullInvoice')} onClose={() => setInvoice(false)} foot={<><button className="btn" onClick={() => setInvoice(false)}>{t('common.cancel')}</button>
-          <button className="btn primary" disabled={busy || !buyer.buyerName || buyer.buyerTaxId.length !== 13 || !buyer.buyerAddress}
+        <Modal title={t('tx.fullInvoice')} onClose={() => setInvoice(false)} footer={<><button className="btn-outline" onClick={() => setInvoice(false)}>{t('common.cancel')}</button>
+          <button className="btn-primary" disabled={busy || !buyer.buyerName || buyer.buyerTaxId.length !== 13 || !buyer.buyerAddress}
             onClick={() => run(() => post(`/transactions/${sel.id}/documents/full`, buyer), t('tx.invoiceIssued')).then((r) => { if (r) { setInvoice(false); open(sel.id); setPrinting({ path: `/documents/${r.id}/html`, title: r.docNo, fmt: 'a4' }); } })}>{t('tx.issue')}</button></>}>
-          <Field label={t('tx.buyerName')}><input value={buyer.buyerName} onChange={(e) => setBuyer({ ...buyer, buyerName: e.target.value })} /></Field>
-          <div className="row"><Field label={t('settings.taxId')}><input inputMode="numeric" maxLength={13} value={buyer.buyerTaxId} onChange={(e) => setBuyer({ ...buyer, buyerTaxId: e.target.value.replace(/\D/g, '') })} /></Field>
-            <Field label={t('settings.branch')}><input inputMode="numeric" maxLength={5} value={buyer.buyerBranch} onChange={(e) => setBuyer({ ...buyer, buyerBranch: e.target.value.replace(/\D/g, '') })} /></Field></div>
-          <Field label={t('common.address')}><textarea rows={3} value={buyer.buyerAddress} onChange={(e) => setBuyer({ ...buyer, buyerAddress: e.target.value })} /></Field>
+          <div className="space-y-3">
+            <Field label={t('tx.buyerName')} required><input className="input" value={buyer.buyerName} onChange={(e) => setBuyer({ ...buyer, buyerName: e.target.value })} /></Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={t('settings.taxId')} required error={buyer.buyerTaxId && buyer.buyerTaxId.length !== 13 ? t('cust.id13') : undefined}><input className="input" inputMode="numeric" maxLength={13} value={buyer.buyerTaxId} onChange={(e) => setBuyer({ ...buyer, buyerTaxId: e.target.value.replace(/\D/g, '') })} /></Field>
+              <Field label={t('settings.branch')}><input className="input" inputMode="numeric" maxLength={5} value={buyer.buyerBranch} onChange={(e) => setBuyer({ ...buyer, buyerBranch: e.target.value.replace(/\D/g, '') })} /></Field>
+            </div>
+            <Field label={t('common.address')} required><textarea className="input" rows={3} value={buyer.buyerAddress} onChange={(e) => setBuyer({ ...buyer, buyerAddress: e.target.value })} /></Field>
+          </div>
         </Modal>)}
       {printing && <PrintModal path={printing.path} title={printing.title} defaultFormat={printing.fmt} onClose={() => setPrinting(null)} />}
     </>

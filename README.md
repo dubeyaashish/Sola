@@ -18,7 +18,7 @@ cd apps/api && npm run seed   # demo users (owner/manager/cashier/stock, passwor
 JWT_SECRET=change-me-please-16+ npm run dev:api   # http://localhost:3000
 ```
 
-Web UI (English / ไทย, responsive, red·white·gold): `npm run dev:web` (http://localhost:5173, proxies /api → :3000).
+Web UI (React + Tailwind; English / ไทย, responsive, red·white·gold): `npm run dev:web` (http://localhost:5173, proxies /api → :3000).
 
 Docs: [UX & visual design](docs/DESIGN.md) · [Schema design](docs/SCHEMA.md) · [Architecture](docs/ARCHITECTURE.md)
 
