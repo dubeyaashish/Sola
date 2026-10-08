@@ -1,6 +1,7 @@
 // One-command local start: seeds the demo database on first run, then starts the API (:3000) and the web app (:5173).
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import net from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
@@ -9,7 +10,10 @@ const api = join(root, 'apps/api');
 const [major] = process.versions.node.split('.').map(Number);
 if (major < 22) { console.error(`Sola needs Node 22 or newer (you have ${process.versions.node}). Try: brew install node@22`); process.exit(1); }
 
-const env = { ...process.env, JWT_SECRET: process.env.JWT_SECRET ?? 'sola-local-dev-secret-change-me' };
+const free = (port) => new Promise((res) => { const s = net.createServer().once('error', () => res(false)).once('listening', () => s.close(() => res(true))).listen(port, '0.0.0.0'); });
+let apiPort = Number(process.env.PORT ?? 3000);
+while (!(await free(apiPort))) { console.log(`Port ${apiPort} is busy, trying ${apiPort + 1}…`); apiPort++; }
+const env = { ...process.env, JWT_SECRET: process.env.JWT_SECRET ?? 'sola-local-dev-secret-change-me', PORT: String(apiPort), API_PORT: String(apiPort) };
 const run = (cmd, args, cwd, name) => {
   const p = spawn(cmd, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'], shell: process.platform === 'win32' });
   const tag = (s) => s.toString().split('\n').filter(Boolean).map((l) => `[${name}] ${l}`).join('\n') + '\n';
@@ -21,7 +25,7 @@ const once = (p) => new Promise((res, rej) => p.on('exit', (c) => (c === 0 ? res
 
 if (!existsSync(join(api, 'data/sola.db'))) await once(run('npm', ['run', 'seed'], api, 'seed'));
 const procs = [run('npm', ['run', 'dev'], api, 'api'), run('npm', ['run', 'dev', '-w', '@sola/web'], root, 'web')];
-console.log('\n  Sola is starting →  http://localhost:5173   (login: owner / sola-demo-123)\n  Press Ctrl+C to stop.\n');
+console.log(`\n  Sola is starting →  http://localhost:5173   (API on :${apiPort}; login: owner / sola-demo-123)\n  Press Ctrl+C to stop.\n`);
 const stop = () => { for (const p of procs) p.kill(); process.exit(0); };
 process.on('SIGINT', stop); process.on('SIGTERM', stop);
 procs.forEach((p) => p.on('exit', (c) => { if (c) { console.error('A process exited; stopping.'); stop(); } }));

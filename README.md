@@ -26,3 +26,5 @@ Env: `JWT_SECRET` (required), `DB_PATH` (default `./data/sola.db`), `PORT`, `RAT
 Before issuing tax invoices set `shop_tax_id` etc. via `PUT /settings` (owner).
 
 Printable bills and invoices are generated as HTML by the API (see docs/DESIGN.md §7). Thai address data © kongvut/thai-province-data (MIT).
+
+If port 3000 is taken (e.g. macOS AirPlay Receiver), `npm run dev` picks the next free port automatically. For the manual commands set `PORT=3001` for the API and `API_PORT=3001` for the web app.
