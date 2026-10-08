@@ -3,6 +3,14 @@
 Buy / sell / exchange gold on one screen, weight-and-purity stock, daily rates, pawn & sell-back,
 gold savings, loyalty, tax documents, and back-office reports.
 
+**Quick start (macOS / Linux, Node 22+):**
+```bash
+npm install
+npm run dev      # seeds demo data on first run, then opens API :3000 + web :5173
+```
+Login: `owner` / `sola-demo-123`.
+
+Manual steps:
 ```bash
 npm install
 npm test                      # core + API tests
