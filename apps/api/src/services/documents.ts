@@ -21,7 +21,7 @@ export function issueDocument(db: DB, actor: Actor, txId: number, type: DocType,
     throw new DomainError('BUYER_REQUIRED', 'buyer name, tax id and address are required for a full tax invoice');
 
   const s = getSettings(db);
-  const seller = { name: s.shop_name, taxId: s.shop_tax_id, address: s.shop_address, branch: s.shop_branch };
+  const seller = { name: s.shop_name, nameEn: s.shop_name_en, taxId: s.shop_tax_id, address: s.shop_address, addressEn: s.shop_address_en, branch: s.shop_branch, phone: s.shop_phone, email: s.shop_email };
   if (type !== 'PURCHASE_VOUCHER' && !seller.taxId) throw new DomainError('SELLER_NOT_CONFIGURED', 'set shop_tax_id in settings before issuing tax invoices');
 
   const year = new Date().toISOString().slice(0, 4);

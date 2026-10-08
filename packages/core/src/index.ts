@@ -7,3 +7,4 @@ export * from './permissions';
 export * from './association';
 export * from './pawn';
 export * from './savings';
+export * from './bahttext';

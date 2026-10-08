@@ -2,7 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { can, DomainError, ROLES, ROLE_PERMISSIONS } from '@sola/core';
 import type { DB } from '../db/schema';
-import { requirePerm } from './guard';
+import { requireAny, requirePerm } from './guard';
+import { documentsForTransaction } from '../services/documents';
 import { audit, listAudit } from '../repos/audit';
 import { getCustomer, insertCustomer, searchCustomers, updateCustomer } from '../repos/customers';
 import { getItem, getItemBySku, listItems, listMovements, stockSummary } from '../repos/items';
@@ -125,12 +126,13 @@ export function registerProtectedRoutes(app: FastifyInstance, db: DB) {
     assertTxPermissions(req.actor.role, b);
     return reply.code(201).send(createTransaction(db, req.actor, b));
   });
-  app.get('/transactions', { preHandler: requirePerm('report.view') }, async (req) =>
+  app.get('/transactions', { preHandler: requireAny('report.view', 'sale.create') }, async (req) =>
     listTransactions(db, z.object({ from: z.string().optional(), to: z.string().optional(), type: z.string().optional(), limit: z.coerce.number().int().max(500).optional() }).parse(req.query)));
   app.get('/transactions/:id', async (req) => {
-    const tx = getTransaction(db, id.parse((req.params as { id: string }).id));
+    const txId = id.parse((req.params as { id: string }).id);
+    const tx = getTransaction(db, txId);
     if (!tx) throw new DomainError('NOT_FOUND', 'transaction not found');
-    return tx;
+    return { ...tx, documents: documentsForTransaction(db, txId) };
   });
   app.post('/transactions/:id/void', { preHandler: requirePerm('sale.void') }, async (req) =>
     voidTransaction(db, req.actor, id.parse((req.params as { id: string }).id), z.object({ reason: z.string().min(1).max(300) }).parse(req.body).reason));
@@ -141,7 +143,7 @@ export function registerProtectedRoutes(app: FastifyInstance, db: DB) {
     return dailySummary(db, day);
   });
   app.get('/audit', { preHandler: requirePerm('audit.view') }, async (req) => listAudit(db, 200, (req.query as { entity?: string }).entity));
-  app.get('/settings', async () => getSettings(db));
+  app.get('/settings', async () => { const { shop_logo: _logo, ...rest } = getSettings(db); return rest; });
   app.put('/settings', { preHandler: requirePerm('user.manage') }, async (req) => {
     const b = z.object({ shop_name: z.string().min(1).max(100).optional(), tax_rate_bp: z.number().int().min(0).max(10000).optional(), tax_mode: z.enum(['NONE', 'MAKING_ONLY', 'FULL']).optional(),
       shop_tax_id: z.string().regex(/^\d{13}$/).optional(), shop_address: z.string().max(300).optional(), shop_branch: z.string().max(10).optional(),
@@ -151,7 +153,8 @@ export function registerProtectedRoutes(app: FastifyInstance, db: DB) {
     }).parse(req.body);
     for (const [k, v] of Object.entries(b)) if (v !== undefined) setSetting(db, k, String(v));
     audit(db, req.actor, 'settings.update', 'settings', null, b);
-    return getSettings(db);
+    const { shop_logo: _l, ...rest } = getSettings(db);
+    return rest;
   });
   app.get('/users', { preHandler: requirePerm('user.manage') }, async () => listUsers(db));
   app.post('/users', { preHandler: requirePerm('user.manage') }, async (req, reply) => {

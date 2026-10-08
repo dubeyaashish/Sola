@@ -2,7 +2,10 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { DomainError } from '@sola/core';
 import type { DB } from '../db/schema';
-import { requirePerm } from './guard';
+import { requireAny, requirePerm } from './guard';
+import { clearLogo, getCompany, getLogo, setCompany, setLogo } from '../services/company';
+import { listDistricts, listProvinces, listSubDistricts } from '../services/geo';
+import { renderDocument, renderPawn, renderReceipt, renderSavings } from '../services/printing';
 import { currentRate } from '../repos/rates';
 import { applyAssociationQuote } from '../services/rates';
 import * as pawn from '../services/pawn';
@@ -92,4 +95,36 @@ export function registerBackOfficeRoutes(app: FastifyInstance, db: DB) {
   app.get('/ledger', { preHandler: requirePerm('report.view') }, async (req) => { const r = range.parse(req.query); return ledger.listEntries(db, r.from, r.to); });
   app.get('/reports/profit-loss', { preHandler: requirePerm('report.view') }, async (req) => { const r = range.parse(req.query); return ledger.profitLoss(db, r.from, r.to); });
   app.get('/reports/dashboard', { preHandler: requirePerm('report.view') }, async () => ledger.dashboard(db, todayStr()));
+
+  // ---- Thai address lookups (province → district → sub-district)
+  app.get('/geo/provinces', async () => listProvinces());
+  app.get('/geo/provinces/:id/districts', async (req) => listDistricts(pid(req)));
+  app.get('/geo/districts/:id/subdistricts', async (req) => listSubDistricts(pid(req)));
+
+  // ---- company profile + logo
+  app.get('/settings/company', async () => getCompany(db));
+  app.put('/settings/company', { preHandler: requirePerm('user.manage') }, async (req) => {
+    const b = z.object({
+      name: z.string().min(1).max(150), nameEn: z.string().max(150).optional(), taxId: z.string().regex(/^\d{13}$/, 'Tax ID is 13 digits').or(z.literal('')).optional(),
+      branch: z.string().regex(/^\d{5}$/, 'Branch code is 5 digits').or(z.literal('')).optional(), phone: z.string().max(30).optional(), email: z.string().email().or(z.literal('')).optional(),
+      addressLine: z.string().max(200), provinceId: id, districtId: id, subDistrictId: id, postcode: z.string().regex(/^\d{5}$/, 'Postcode is 5 digits'),
+    }).parse(req.body);
+    return setCompany(db, req.actor, b);
+  });
+  app.get('/settings/logo', async () => ({ dataUrl: getLogo(db) }));
+  app.put('/settings/logo', { preHandler: requirePerm('user.manage') }, async (req) => {
+    setLogo(db, req.actor, z.object({ dataUrl: z.string().max(700_000) }).parse(req.body).dataUrl);
+    return { ok: true };
+  });
+  app.delete('/settings/logo', { preHandler: requirePerm('user.manage') }, async (req) => { clearLogo(db, req.actor); return { ok: true }; });
+
+  // ---- printable HTML (A4 / 80 mm slip; Thai / English / both). Fetched with the bearer token, rendered in an iframe or saved.
+  const printQ = z.object({ lang: z.enum(['th', 'en', 'both']).default('th'), format: z.enum(['a4', 'slip']).optional(), autoprint: z.enum(['0', '1']).optional(), embed: z.enum(['0', '1']).optional() });
+  const opts = (req: { query: unknown }, defFormat: 'a4' | 'slip') => { const q = printQ.parse(req.query); return { lang: q.lang, format: q.format ?? defFormat, autoprint: q.autoprint === '1', embed: q.embed === '1' } as const; };
+  const html = (reply: import('fastify').FastifyReply, body: string) =>
+    reply.header('content-type', 'text/html; charset=utf-8').header('content-security-policy', "default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'").send(body);
+  app.get('/documents/:id/html', { preHandler: requirePerm('document.issue') }, async (req, reply) => html(reply, renderDocument(db, pid(req), opts(req, 'a4'))));
+  app.get('/transactions/:id/receipt', { preHandler: requireAny('sale.create', 'report.view') }, async (req, reply) => html(reply, renderReceipt(db, pid(req), opts(req, 'slip'))));
+  app.get('/pawn/:id/print', { preHandler: requirePerm('pawn.manage') }, async (req, reply) => html(reply, renderPawn(db, pid(req), opts(req, 'a4'))));
+  app.get('/savings/:id/print', { preHandler: requirePerm('savings.manage') }, async (req, reply) => html(reply, renderSavings(db, pid(req), opts(req, 'slip'))));
 }

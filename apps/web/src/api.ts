@@ -22,3 +22,12 @@ export async function api<T = any>(method: string, path: string, body?: unknown)
 export const get = <T = any>(p: string) => api<T>('GET', p);
 export const post = <T = any>(p: string, b?: unknown) => api<T>('POST', p, b ?? {});
 export const put = <T = any>(p: string, b?: unknown) => api<T>('PUT', p, b ?? {});
+export const del = <T = any>(p: string) => api<T>('DELETE', p);
+export const patch = <T = any>(p: string, b?: unknown) => api<T>('PATCH', p, b ?? {});
+
+/** Fetches an authenticated text resource (used for printable HTML). */
+export async function getText(path: string): Promise<string> {
+  const res = await fetch(`/api${path}`, { headers: getToken() ? { authorization: `Bearer ${getToken()}` } : {} });
+  if (!res.ok) { const d = await res.json().catch(() => ({})); throw new ApiError(res.status, d.error ?? 'ERROR', d.message ?? res.statusText); }
+  return res.text();
+}

@@ -200,3 +200,87 @@ test('loyalty rewards, ledger, dashboard', async () => {
   assert.ok(dash.stock.length > 0 && dash.stockMarketValue > 0);
   assert.equal(dash.today.salesCount, 1);
 });
+
+const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+test('Thai geo dropdown data and company profile with address + logo', async () => {
+  const { call } = setup();
+  const prov = (await call('cashier', 'GET', '/geo/provinces')).body;
+  assert.equal(prov.length, 77);
+  const bkk = prov.find((p: any) => p.en === 'Bangkok');
+  const dists = (await call('cashier', 'GET', `/geo/provinces/${bkk.id}/districts`)).body;
+  assert.ok(dists.length >= 50);
+  const subs = (await call('cashier', 'GET', `/geo/districts/${dists[0].id}/subdistricts`)).body;
+  assert.ok(subs.length > 0 && /^\d{5}$/.test(subs[0].zip));
+
+  const body = { name: 'ห้างทองโซลา', nameEn: 'Sola Gold', taxId: '0105500000001', branch: '00000', phone: '02-123-4567', addressLine: '123 ถ.เยาวราช', provinceId: bkk.id, districtId: dists[0].id, subDistrictId: subs[0].id, postcode: subs[0].zip };
+  assert.equal((await call('cashier', 'PUT', '/settings/company', body)).status, 403);
+  const ok = await call('owner', 'PUT', '/settings/company', body);
+  assert.equal(ok.status, 200);
+  assert.ok(ok.body.address.includes('กรุงเทพมหานคร') && !ok.body.address.includes('จังหวัด') && ok.body.addressEn.includes('Bangkok'));
+  // sub-district from a different district is rejected
+  const other = (await call('owner', 'GET', `/geo/districts/${dists[1].id}/subdistricts`)).body[0];
+  assert.equal((await call('owner', 'PUT', '/settings/company', { ...body, subDistrictId: other.id })).body.error, 'INVALID_AREA');
+  assert.equal((await call('owner', 'PUT', '/settings/company', { ...body, taxId: '123' })).status, 400);
+
+  assert.equal((await call('owner', 'PUT', '/settings/logo', { dataUrl: 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=' })).body.error, 'INVALID_LOGO');
+  assert.equal((await call('owner', 'PUT', '/settings/logo', { dataUrl: 'data:image/jpeg;base64,' + PNG.split(',')[1] })).body.error, 'INVALID_LOGO'); // type/content mismatch
+  assert.equal((await call('owner', 'PUT', '/settings/logo', { dataUrl: PNG })).status, 200);
+  assert.equal((await call('cashier', 'GET', '/settings/logo')).body.dataUrl, PNG);
+  assert.equal((await call('cashier', 'GET', '/settings')).body.shop_logo, undefined);
+  assert.equal((await call('owner', 'GET', '/settings/company')).body.hasLogo, true);
+  assert.equal((await call('owner', 'DELETE' as never, '/settings/logo')).status, 200);
+});
+
+test('printable HTML: bill, tax invoices, purchase voucher; escapes user text', async () => {
+  const { call, ring, cust, app } = await configured();
+  const geoP = (await call('owner', 'GET', '/geo/provinces')).body[0];
+  const d = (await call('owner', 'GET', `/geo/provinces/${geoP.id}/districts`)).body[0];
+  const sd = (await call('owner', 'GET', `/geo/districts/${d.id}/subdistricts`)).body[0];
+  await call('owner', 'PUT', '/settings/company', { name: 'Sola <b>Gold</b>', taxId: '0105500000001', addressLine: '1 Main', provinceId: geoP.id, districtId: d.id, subDistrictId: sd.id, postcode: sd.zip });
+  await call('owner', 'PUT', '/settings/logo', { dataUrl: PNG });
+  await call('cashier', 'PATCH', `/customers/${cust.id}`, { name: '<script>alert(1)</script>' });
+
+  const q = (await call('cashier', 'POST', '/pricing/quote', { itemIds: [ring.id], tradeIns: [{ weightMg: 2000, purityBp: 9650 }] })).body.quote;
+  const tx = (await call('cashier', 'POST', '/transactions', { itemIds: [ring.id], customerId: cust.id, tradeIns: [{ weightMg: 2000, purityBp: 9650 }], payments: [{ method: 'CASH', amount: q.net }] })).body;
+  const raw = async (url: string, who = 'cashier') => {
+    const login = await app.inject({ method: 'POST', url: '/auth/login', payload: { username: who, password: 'password123' } });
+    return app.inject({ method: 'GET', url, headers: { authorization: `Bearer ${login.json().token}` } });
+  };
+  const abb = tx.documents.find((x: any) => x.docNo.startsWith('ABB'));
+  const pv = tx.documents.find((x: any) => x.docNo.startsWith('PV'));
+
+  const a4 = await raw(`/documents/${abb.id}/html?lang=both`);
+  assert.equal(a4.statusCode, 200);
+  assert.match(a4.headers['content-type'] as string, /text\/html/);
+  assert.ok(a4.headers['content-security-policy']);
+  assert.ok(a4.body.includes(abb.docNo) && a4.body.includes('ใบกำกับภาษีอย่างย่อ') && a4.body.includes('Abbreviated Tax Invoice'));
+  assert.ok(a4.body.includes('data:image/png;base64') && a4.body.includes('บาท'));
+  assert.ok(!a4.body.includes('<script>alert') && !a4.body.includes('Sola <b>Gold</b>'), 'user text must be escaped');
+  assert.ok(a4.body.includes('Sola &lt;b&gt;Gold&lt;/b&gt;'));
+
+  const slip = await raw(`/transactions/${tx.id}/receipt?lang=en&autoprint=1`);
+  assert.ok(slip.body.includes('Receipt') && slip.body.includes('window.print()') && slip.body.includes('80mm') && slip.body.includes('&lt;script&gt;'));
+  const voucher = await raw(`/documents/${pv.id}/html?lang=th`);
+  assert.ok(voucher.body.includes('ใบรับซื้อทอง') && voucher.body.includes('1234567890123'));
+
+  const full = await call('cashier', 'POST', `/transactions/${tx.id}/documents/full`, { buyerName: 'ACME', buyerTaxId: '0105500000099', buyerAddress: 'BKK' });
+  assert.ok((await raw(`/documents/${full.body.id}/html`)).body.includes('ใบกำกับภาษี'));
+  assert.equal((await raw(`/documents/${abb.id}/html`, 'stock')).statusCode, 403);
+  assert.equal((await raw('/documents/9999/html')).statusCode, 404);
+
+  await call('manager', 'POST', `/transactions/${tx.id}/void`, { reason: 'test' });
+  assert.ok((await raw(`/documents/${abb.id}/html`)).body.includes('ยกเลิก'));
+});
+
+test('pawn ticket and savings ticket render', async () => {
+  const { call, cust, app } = await configured();
+  const c = (await call('cashier', 'POST', '/pawn', { type: 'SELL_BACK', customerId: cust.id, principal: 500_000, rateBpPerMonth: 100, startDate: '2026-01-01', items: [{ description: 'Chain', weightMg: 7622, purityBp: 9650 }] })).body;
+  const sv = (await call('cashier', 'POST', '/savings', { customerId: cust.id, plan: 'FLEXIBLE', mode: 'CASH' })).body;
+  const login = (await app.inject({ method: 'POST', url: '/auth/login', payload: { username: 'cashier', password: 'password123' } })).json().token;
+  const get = (u: string) => app.inject({ method: 'GET', url: u, headers: { authorization: `Bearer ${login}` } });
+  const p = await get(`/pawn/${c.id}/print?lang=both`);
+  assert.ok(p.body.includes(c.contractNo) && p.body.includes('สัญญาขายฝาก') && p.body.includes('ห้าพันบาทถ้วน'));
+  const s = await get(`/savings/${sv.id}/print`);
+  assert.ok(s.body.includes(sv.accountNo) && s.body.includes('ตั๋วออมทอง'));
+});

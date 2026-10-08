@@ -45,7 +45,7 @@ erDiagram
 
 ### Core / security
 - **users** — `role` ∈ OWNER, MANAGER, CASHIER, STOCK_CLERK; permissions map lives in `@sola/core` (`ROLE_PERMISSIONS`), checked on every route. `active` allows instant deactivation.
-- **settings** — key/value: shop identity (`shop_name`, `shop_tax_id`, `shop_address`, `shop_branch`), `tax_rate_bp`, `tax_mode` (NONE | MAKING_ONLY | FULL), pawn limits, points rule.
+- **settings** — key/value: company profile (`shop_name`, `shop_name_en`, `shop_tax_id`, `shop_branch`, `shop_phone`, `shop_email`, structured address `shop_addr_line` + `shop_province_id` / `shop_district_id` / `shop_subdistrict_id` / `shop_postcode`, composed `shop_address` / `shop_address_en`), `shop_logo` (PNG/JPEG/WebP data URL ≤ 400 KB, signature-checked), `tax_rate_bp`, `tax_mode` (NONE | MAKING_ONLY | FULL), pawn limits, points rule. Address dropdowns are served from `apps/api/data-static/thai-geo.json` (77 provinces, 930 districts, 7,436 sub-districts with postcodes; data from [kongvut/thai-province-data](https://github.com/kongvut/thai-province-data), MIT).
 - **audit_logs** — who did what: login attempts, rate changes, item edits, voids, pawn/savings actions, settings.
 
 ### Pricing

@@ -21,5 +21,9 @@ export const requirePerm = (...perms: Permission[]) => async (req: FastifyReques
   if (!perms.every((p) => can(req.actor.role, p))) return reply.code(403).send({ error: 'FORBIDDEN', message: `missing permission: ${perms.join(', ')}` });
 };
 
+export const requireAny = (...perms: Permission[]) => async (req: FastifyRequest, reply: FastifyReply) => {
+  if (!perms.some((p) => can(req.actor.role, p))) return reply.code(403).send({ error: 'FORBIDDEN', message: `missing permission: one of ${perms.join(', ')}` });
+};
+
 export const mountProtected = (app: FastifyInstance, db: DB, fn: (a: FastifyInstance) => void) =>
   app.register(async (scope) => { scope.addHook('preHandler', authenticate(db)); fn(scope); });

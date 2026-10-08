@@ -4,6 +4,7 @@ import { openDb } from './db/schema';
 import { findUserByUsername, insertUser } from './repos/users';
 import { insertRate, currentRate } from './repos/rates';
 import { insertItem, insertMovement } from './repos/items';
+import { insertCustomer } from './repos/customers';
 
 const dbPath = process.env.DB_PATH ?? './data/sola.db';
 mkdirSync(dirname(dbPath), { recursive: true });
@@ -36,5 +37,8 @@ if (existing.n === 0) {
     const id = insertItem(db, { name, category, weightMg, purityBp, making: making as never });
     insertMovement(db, { itemId: id, type: 'RECEIVE', from: null, to: 'IN_STOCK', weightMg, userId: owner.id, note: 'seed' });
   }
+}
+if ((db.prepare('SELECT COUNT(*) AS n FROM customers').get() as { n: number }).n === 0) {
+  insertCustomer(db, { name: 'สมชาย ใจดี (demo)', phone: '0812345678', nationalId: '1101700203451', member: true, address: 'Bangkok' });
 }
 console.log(`Seeded ${dbPath}. Users: ${users.map((u) => u.username).join(', ')} / password: ${password}`);

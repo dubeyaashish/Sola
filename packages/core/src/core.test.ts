@@ -115,3 +115,17 @@ test('association quote per baht@96.5% -> pure-gram rates', () => {
   assert.ok(r.bar.sellPerGram > r.bar.buyPerGram && r.ornament.sellPerGram > r.ornament.buyPerGram);
   assert.ok(Math.abs(r.bar.buyPerGram - 407_900) < 500);
 });
+
+import { bahtText } from './index';
+test('Thai baht text', () => {
+  assert.equal(bahtText(0), 'ศูนย์บาทถ้วน');
+  assert.equal(bahtText(100), 'หนึ่งบาทถ้วน');
+  assert.equal(bahtText(1100), 'สิบเอ็ดบาทถ้วน');
+  assert.equal(bahtText(2100), 'ยี่สิบเอ็ดบาทถ้วน');
+  assert.equal(bahtText(10100), 'หนึ่งร้อยเอ็ดบาทถ้วน');
+  assert.equal(bahtText(123450), 'หนึ่งพันสองร้อยสามสิบสี่บาทห้าสิบสตางค์');
+  assert.equal(bahtText(100_000_000), 'หนึ่งล้านบาทถ้วน');
+  assert.equal(bahtText(100_000_100), 'หนึ่งล้านหนึ่งบาทถ้วน');
+  assert.equal(bahtText(2500), 'ยี่สิบห้าบาทถ้วน');
+  assert.equal(bahtText(-500), 'ลบห้าบาทถ้วน');
+});
