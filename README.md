@@ -10,6 +10,8 @@ cd apps/api && npm run seed   # demo users (owner/manager/cashier/stock, passwor
 JWT_SECRET=change-me-please-16+ npm run dev:api   # http://localhost:3000
 ```
 
+Web UI: `npm run dev:web` (http://localhost:5173, proxies /api → :3000).
+
 Docs: [Schema design](docs/SCHEMA.md) · [Architecture](docs/ARCHITECTURE.md)
 
 Env: `JWT_SECRET` (required), `DB_PATH` (default `./data/sola.db`), `PORT`, `RATE_FEED_URL` (optional auto price feed).
