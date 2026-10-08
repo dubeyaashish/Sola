@@ -1,0 +1,16 @@
+{
+  "name": "sola",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sola — Gold Shop POS and Inventory Management System",
+  "workspaces": ["packages/*", "apps/*"],
+  "scripts": {
+    "dev:api": "npm run dev -w @sola/api",
+    "dev:web": "npm run dev -w @sola/web",
+    "seed": "npm run seed -w @sola/api",
+    "test": "npm test -ws --if-present",
+    "typecheck": "npm run typecheck -ws --if-present",
+    "build": "npm run build -w @sola/web"
+  },
+  "engines": { "node": ">=22" }
+}
